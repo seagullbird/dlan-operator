@@ -1,0 +1,16 @@
+{
+  "name": "event-watchers",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "dependencies": {
+    "sqlite3": "^4.1.0",
+    "web3": "^1.2.4"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Qingyu Chen",
+  "license": "MIT"
+}
