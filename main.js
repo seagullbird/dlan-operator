@@ -63,7 +63,7 @@ app.listen(port, () => {
  console.log("Server running on port " + port);
 })
 
-app.get("/balance", (req, res, next) => {
+app.get("/balance", (req, res) => {
   var addr = req.query.address
   if (!addr) res.send("need parameter 'address'")
   else {
@@ -75,4 +75,19 @@ app.get("/balance", (req, res, next) => {
       else res.send(`${row.bal}`)
     })
   }
+})
+
+app.post("/transaction", (req, res) => {
+  var addr = req.query.address
+  var bal = req.query.bal
+  var sig = req.query.signature
+
+  db.each(`UPDATE users SET bal = ?, signature = ?`, [bal, sig], (err, row) => {
+    if (err) {
+      console.log(err)
+      res.send(`${err}`)
+      return
+    }
+  })
+  res.send("")
 })
