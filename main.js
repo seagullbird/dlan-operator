@@ -83,7 +83,14 @@ app.post("/transaction", (req, res) => {
   var addr = req.query.address
   var bal = req.query.bal
   var sig = req.query.signature
-
+  var msghash = web3Obj.utils.soliditySha3(bal)
+  var signer = web3Obj.eth.accounts.recover(msghash, '0x' + sig).toLowerCase()
+  // verify signature
+  if (signer !== addr) {
+    console.log(signer)
+    res.send("Invalid signature!")
+    return;
+  }
   db.each(`UPDATE users SET bal = ?, signature = ?`, [bal, sig], (err, row) => {
     if (err) {
       console.log(err)
