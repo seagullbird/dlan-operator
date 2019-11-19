@@ -1,6 +1,7 @@
 const Web3 = require('web3')
 const Sqlite3 = require('sqlite3').verbose();
 const Express = require('express')
+const Morgan = require('morgan')
 const tokenInterface = require('../dlan-network/build/contracts/DlanCore.json')
 const chainWsAddr = "ws://localhost:7545"
 const dlanCoreAddr = "0xaE7F1947640FF06F49f72b78fCFfBeBAB764A278"
@@ -57,7 +58,8 @@ dlancore.events.Exiting({}, function(error, event) {
   })
 })
 
-var app = Express();
+var app = Express()
+app.use(Morgan('combined'))
 const port = 5000;
 app.listen(port, () => {
  console.log("Server running on port " + port);
