@@ -4,6 +4,7 @@
   "description": "",
   "main": "main.js",
   "dependencies": {
+    "express": "^4.17.1",
     "sqlite3": "^4.1.0",
     "web3": "^1.2.4"
   },

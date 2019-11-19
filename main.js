@@ -1,5 +1,6 @@
 const Web3 = require('web3')
 const Sqlite3 = require('sqlite3').verbose();
+const Express = require('express')
 const tokenInterface = require('../dlan-network/build/contracts/DlanCore.json')
 const chainWsAddr = "ws://localhost:7545"
 const dlanCoreAddr = "0xaE7F1947640FF06F49f72b78fCFfBeBAB764A278"
@@ -37,7 +38,7 @@ dlancore.events.Exiting({}, function(error, event) {
   var owner = event.returnValues.owner.toLowerCase()
   db.get(`SELECT bal, signature FROM users WHERE address = ?`, [owner], (err, row) => {
     if (err) {
-      console.log(err);
+      console.log(err)
       return
     }
     dlancore.methods.challenge(owner, row.bal, hexToBytes(row.signature)).send({
@@ -45,7 +46,7 @@ dlancore.events.Exiting({}, function(error, event) {
       gas: 20000000
     }, function(err, txHash) {
       if (err) {
-        console.log(err);
+        console.log(err)
         return;
       }
       db.each(`UPDATE users SET bal = 0 WHERE address = ?`,
@@ -54,4 +55,24 @@ dlancore.events.Exiting({}, function(error, event) {
         })
     })
   })
+})
+
+var app = Express();
+const port = 5000;
+app.listen(port, () => {
+ console.log("Server running on port " + port);
+})
+
+app.get("/balance", (req, res, next) => {
+  var addr = req.query.address
+  if (!addr) res.send("need parameter 'address'")
+  else {
+    db.get(`SELECT bal FROM users WHERE address = ?`, [addr], (err, row) => {
+      if (err) {
+        console.log(err)
+        res.send(`${err}`)
+      }
+      else res.send(`${row.bal}`)
+    })
+  }
 })
