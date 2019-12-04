@@ -9,21 +9,20 @@ const opAddr = "0x010cBc9930C71f60cA18159A9B250F9Ed416129B"
 const sha3_256 = require('js-sha3').sha3_256;
 const { MerkleTree } = require('merkletreejs')
 
-var broadcasted_root = 'd1d0f7737fc576f24252ccead8af9fc315e8cb16db6a926614e9d654a9a33a19'
+//var broadcasted_root = 'd1d0f7737fc576f24252ccead8af9fc315e8cb16db6a926614e9d654a9a33a19'
 let web3Provider = new Web3.providers.WebsocketProvider(chainWsAddr)
 var web3Obj = new Web3(web3Provider)
 let dlancore = new web3Obj.eth.Contract(tokenInterface.abi, dlanCoreAddr)
 
-dlancore.methods.provider_register().send({
-    from: opAddr,
-    gas: 20000000
-  }, function(err, txHash) {
-    if (err) {
-      console.log(err)
-      return;
-    }
-})
-
+//dlancore.methods.provider_register().send({
+ //   from: opAddr,
+  //  gas: 20000000
+  //}, function(err, txHash) {
+  //  if (err) {
+   //   console.log(err)
+   //   return;
+   // }
+//})
 
 function hexToBytes(hex) {
   for (var bytes = [], c = 0; c < hex.length; c += 2)
@@ -59,12 +58,33 @@ function aggregateTransactions(db) {
       const leaves = leaves_objects.map(x => sha3_256(x));
       const tree = new MerkleTree(leaves, sha3_256);
       const root = tree.getRoot().toString('hex')
+      console.log(root)
       return root;
     });
-  }
+}
+
+merkle_root = aggregateTransactions(db);
+console.log(merkle_root)
+
+var app = Express()
+app.use(Morgan('combined'))
+const port = 6000;
+app.listen(port, () => {
+ console.log("Server running on port " + port);
+})
+
+app.post("/merkleready", (req, res) => {
+    var operator_root = req.query.merkleroot
+    console.log(operator_root)
+    console.log(merkle_root)
+    if (merkle_root == operator_root){
+        console.log('MATCHES!')
+        res.send('MATCHES!')
+        return;
+    }
+    res.send('DOES NOT MATCH')
+    return;
+  })
+
+
   
-  merkle_root = aggregateTransactions(db);
-
-  if (merkle_root == broadcasted_root){
-
-  }
