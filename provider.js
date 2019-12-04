@@ -5,24 +5,27 @@ const Morgan = require('morgan')
 const tokenInterface = require('../dlan-network/build/contracts/DlanCore.json')
 const chainWsAddr = "ws://localhost:7545"
 const dlanCoreAddr = "0xaE7F1947640FF06F49f72b78fCFfBeBAB764A278"
-const opAddr = "0x010cBc9930C71f60cA18159A9B250F9Ed416129B"
+const providerAddr = '0x947398cAb9732C34603816dfdd2dC947a768ed89'
 const sha3_256 = require('js-sha3').sha3_256;
 const { MerkleTree } = require('merkletreejs')
+const web3 = new Web3("ws://localhost:7545")
 
 //var broadcasted_root = 'd1d0f7737fc576f24252ccead8af9fc315e8cb16db6a926614e9d654a9a33a19'
 let web3Provider = new Web3.providers.WebsocketProvider(chainWsAddr)
 var web3Obj = new Web3(web3Provider)
 let dlancore = new web3Obj.eth.Contract(tokenInterface.abi, dlanCoreAddr)
 
-//dlancore.methods.provider_register().send({
-//   from: opAddr,
-//  gas: 20000000
-//}, function(err, txHash) {
-//  if (err) {
-//   console.log(err)
-//   return;
-// }
-//})
+/*
+dlancore.methods.provider_register().send({
+  from: providerAddr,
+  gas: 20000000
+}, function (err, txHash) {
+  if (err) {
+    console.log(err)
+    return;
+  }
+})
+*/
 
 function hexToBytes(hex) {
   for (var bytes = [], c = 0; c < hex.length; c += 2)
@@ -69,6 +72,15 @@ app.post("/merkleready", (req, res) => {
     var merkle_root = tree.getRoot().toString('hex')
     if (merkle_root == operator_root) {
       res.send('MATCHES!')
+      signed_root = web3.eth.sign(providerAddr, web3.sha3(merkle_root))
+      console.log(signed_root)
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", localhost: 5000 / signature, true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify({
+        merkleroot: merkle_root,
+        signature: signed_root
+      }));
     }
     else res.send('DOES NOT MATCH')
   })
