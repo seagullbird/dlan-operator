@@ -15,13 +15,13 @@ var web3Obj = new Web3(web3Provider)
 let dlancore = new web3Obj.eth.Contract(tokenInterface.abi, dlanCoreAddr)
 
 //dlancore.methods.provider_register().send({
- //   from: opAddr,
-  //  gas: 20000000
-  //}, function(err, txHash) {
-  //  if (err) {
-   //   console.log(err)
-   //   return;
-   // }
+//   from: opAddr,
+//  gas: 20000000
+//}, function(err, txHash) {
+//  if (err) {
+//   console.log(err)
+//   return;
+// }
 //})
 
 function hexToBytes(hex) {
@@ -36,55 +36,43 @@ let db = new Sqlite3.Database('./database/users.db', (err) => {
   } else console.log('Connected to database.');
 })
 
-function aggregateTransactions(db) {
-    let sql = 'SELECT * FROM users2';
-    var vendor_payments = {};
-    db.all(sql, [], (err, rows) => {
-      if (err) {
-        throw err;
-      }
-      rows.forEach((row) => {
-        if (row.nasname in vendor_payments){
-          vendor_payments[row.nasname].push({key:row.address, value:row.payment});
-        }else{
-          vendor_payments[row.nasname] = []
-          vendor_payments[row.nasname].push({key:row.address, value:row.payment});
-        }
-      });
-      var leaves_objects = []
-      for (var key in vendor_payments) {
-        leaves_objects.push(String(vendor_payments[key]));
-      }
-      const leaves = leaves_objects.map(x => sha3_256(x));
-      const tree = new MerkleTree(leaves, sha3_256);
-      const root = tree.getRoot().toString('hex')
-      console.log(root)
-      return root;
-    });
-}
-
-merkle_root = aggregateTransactions(db);
-console.log(merkle_root)
 
 var app = Express()
 app.use(Morgan('combined'))
 const port = 6000;
 app.listen(port, () => {
- console.log("Server running on port " + port);
+  console.log("Server running on port " + port);
 })
 
 app.post("/merkleready", (req, res) => {
-    var operator_root = req.query.merkleroot
-    console.log(operator_root)
-    console.log(merkle_root)
-    if (merkle_root == operator_root){
-        console.log('MATCHES!')
-        res.send('MATCHES!')
-        return;
+  var operator_root = req.query.merkleroot
+  let sql = 'SELECT * FROM users2';
+  var vendor_payments = {};
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      throw err;
     }
-    res.send('DOES NOT MATCH')
-    return;
+    rows.forEach((row) => {
+      if (row.nasname in vendor_payments) {
+        vendor_payments[row.nasname].push({ key: row.address, value: row.payment });
+      } else {
+        vendor_payments[row.nasname] = []
+        vendor_payments[row.nasname].push({ key: row.address, value: row.payment });
+      }
+    });
+    var leaves_objects = []
+    for (var key in vendor_payments) {
+      leaves_objects.push(String(vendor_payments[key]));
+    }
+    const leaves = leaves_objects.map(x => sha3_256(x));
+    const tree = new MerkleTree(leaves, sha3_256);
+    var merkle_root = tree.getRoot().toString('hex')
+    if (merkle_root == operator_root) {
+      res.send('MATCHES!')
+    }
+    else res.send('DOES NOT MATCH')
   })
+})
 
 
-  
+
