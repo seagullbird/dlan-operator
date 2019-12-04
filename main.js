@@ -2,10 +2,12 @@ const Web3 = require('web3')
 const Sqlite3 = require('sqlite3').verbose();
 const Express = require('express')
 const Morgan = require('morgan')
+const https = require('https');
 const tokenInterface = require('../dlan-network/build/contracts/DlanCore.json')
 const chainWsAddr = "ws://localhost:7545"
 const dlanCoreAddr = "0xaE7F1947640FF06F49f72b78fCFfBeBAB764A278"
 const opAddr = "0x010cBc9930C71f60cA18159A9B250F9Ed416129B"
+const providerHttpAddr = "http://localhost:6000"
 const sha3_256 = require('js-sha3').sha3_256;
 const { MerkleTree } = require('merkletreejs')
 
@@ -26,19 +28,21 @@ let db = new Sqlite3.Database('./database/users.db', (err) => {
   } else console.log('Connected to database.');
 })
 
-function aggregateTransactions(db) {
-  let sql = 'SELECT * FROM users2';
-  var vendor_payments = {};
+// do that every 1 min
+setInterval(function () {
+  console.log("Aggregating transactions...")
+  let sql = 'SELECT * FROM users2'
+  var vendor_payments = {}
   db.all(sql, [], (err, rows) => {
     if (err) {
       throw err;
     }
     rows.forEach((row) => {
-      if (row.nasname in vendor_payments){
-        vendor_payments[row.nasname].push({key:row.address, value:row.payment});
-      }else{
+      if (row.nasname in vendor_payments) {
+        vendor_payments[row.nasname].push({ key: row.address, value: row.payment });
+      } else {
         vendor_payments[row.nasname] = []
-        vendor_payments[row.nasname].push({key:row.address, value:row.payment});
+        vendor_payments[row.nasname].push({ key: row.address, value: row.payment });
       }
     });
     var leaves_objects = []
@@ -48,14 +52,16 @@ function aggregateTransactions(db) {
     const leaves = leaves_objects.map(x => sha3_256(x));
     const tree = new MerkleTree(leaves, sha3_256);
     const root = tree.getRoot().toString('hex')
-    console.log(root)
-    return tree;
-  });
-}
+    // publish new merkle root
+    https.get(providerHttpAddr + '?merkleroot=' + root, (resp) => {
+      console.log(resp)
+    }).on("error", (err) => {
+      console.log("Error: " + err.message);
+    });
+  })
+}, 60000)
 
-merkle_tree = aggregateTransactions(db);
-
-dlancore.events.Deposited({}, function(error, event) {
+dlancore.events.Deposited({}, function (error, event) {
   console.log("Deposited event received")
   console.log(event.returnValues)
   db.each(`UPDATE users SET bal = bal + ? WHERE address = ?`,
@@ -64,7 +70,7 @@ dlancore.events.Deposited({}, function(error, event) {
     })
 })
 
-dlancore.events.Exiting({}, function(error, event) {
+dlancore.events.Exiting({}, function (error, event) {
   console.log("Exiting event received")
   console.log(event.returnValues);
   var owner = event.returnValues.owner.toLowerCase()
@@ -76,7 +82,7 @@ dlancore.events.Exiting({}, function(error, event) {
     dlancore.methods.challenge(owner, row.bal, hexToBytes(row.signature)).send({
       from: opAddr,
       gas: 20000000
-    }, function(err, txHash) {
+    }, function (err, txHash) {
       if (err) {
         console.log(err)
         return;
@@ -93,7 +99,7 @@ var app = Express()
 app.use(Morgan('combined'))
 const port = 5000;
 app.listen(port, () => {
- console.log("Server running on port " + port);
+  console.log("Server running on port " + port);
 })
 
 app.get("/balance", (req, res) => {
@@ -130,4 +136,17 @@ app.post("/transaction", (req, res) => {
     }
   })
   res.send("")
+})
+
+app.post("/signature", (req, res) => {
+  var sig = req.query.signature
+  var root = req.query.merkleroot
+  dlancore.methods.update_merkle_root(hexToBytes(root), hexToBytes(sig)).send({
+    from: opAddr,
+    gas: 20000000
+  }, function (err, txHash) {
+    if (err) {
+      console.log(err)
+    }
+  })
 })
