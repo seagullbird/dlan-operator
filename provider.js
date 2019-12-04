@@ -2,10 +2,12 @@ const Web3 = require('web3')
 const Sqlite3 = require('sqlite3').verbose();
 const Express = require('express')
 const Morgan = require('morgan')
+const http = require('http')
 const tokenInterface = require('../dlan-network/build/contracts/DlanCore.json')
 const chainWsAddr = "ws://localhost:7545"
 const dlanCoreAddr = "0xaE7F1947640FF06F49f72b78fCFfBeBAB764A278"
-const providerAddr = '0x962A7D4d95d148a2C5A9F5CBFd399d5bddf600ab'
+const providerAddr = '0x947398cAb9732C34603816dfdd2dC947a768ed89'
+const providerPrivate = '0x5ec4dfafe9c31c7f45f4d691cfa84618aa192b10679c7edc0ba06c7f3a6aa68e'
 const sha3_256 = require('js-sha3').sha3_256;
 const { MerkleTree } = require('merkletreejs')
 
@@ -67,19 +69,16 @@ app.post("/merkleready", (req, res) => {
     var merkle_root = tree.getRoot().toString('hex')
     if (merkle_root == operator_root) {
       res.send('MATCHES!')
-      signed_root = web3.eth.sign(providerAddr, web3.sha3(merkle_root))
-      console.log(signed_root)
-      var xhr = new XMLHttpRequest();
-      xhr.open("POST", localhost: 5000 / signature, true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.send(JSON.stringify({
-        merkleroot: merkle_root,
-        signature: signed_root
-      }));
+
+      const hashed_root = web3Obj.utils.sha3(merkle_root);
+      const signed_root = web3Obj.eth.accounts.sign(hashed_root, providerPrivate);
+      console.log(signed_root.signature)
+      http.post('http://localhost:5000/signature?merkleroot=' + hashed_root + '&signature=' + signed_root.signature,
+        (resp) => { })
+        .on("error", err => {
+          console.log("Error: " + err.message)
+        })
     }
     else res.send('DOES NOT MATCH')
   })
 })
-
-
-
