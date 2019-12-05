@@ -52,7 +52,7 @@ setInterval(function () {
     }
     const leaves = leaves_objects.map(x => sha3_256(x));
     const tree = new MerkleTree(leaves, sha3_256);
-    const root = tree.getRoot().toString('hex')
+    const root = '0x' + tree.getRoot().toString('hex')
     // publish new merkle root
     request.post(providerHttpAddr + '/merkleready?merkleroot=' + root)
   })
