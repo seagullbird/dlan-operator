@@ -11,7 +11,13 @@ const providerHttpAddr = "http://localhost:6000"
 const sha3_256 = require('js-sha3').sha3_256;
 const { MerkleTree } = require('merkletreejs')
 const AGGR_INTERVAL = 60000 // 5 min
+var fs = require('fs');
+var util = require('util');
+var log_file = fs.createWriteStream(__dirname + '/provider.log', { flags: 'w' })
 
+function logToFile(msg) {
+  log_file.write(util.format(msg) + '\n');
+}
 
 let web3Provider = new Web3.providers.WebsocketProvider(chainWsAddr)
 var web3Obj = new Web3(web3Provider)
@@ -32,7 +38,7 @@ let dbPool = Mariadb.createPool({
 
 // do that every 1 min
 setInterval(function () {
-  console.log("Aggregating transactions...")
+  logToFile("Aggregating transactions...")
   let sql = 'SELECT * FROM session'
   var vendor_payments = {}
   dbPool.getConnection().then(conn => {
@@ -57,7 +63,7 @@ setInterval(function () {
       conn.end()
     }).catch(err => {
       //handle error
-      console.log(err)
+      logToFile(err)
       conn.end()
     })
   })
@@ -164,14 +170,14 @@ app.post("/transaction", (req, res) => {
 app.post("/signature", (req, res) => {
   var sig = req.query.signature
   var root = req.query.merkleroot
-  console.log(root)
-  console.log(sig)
+  logToFile(root)
+  logToFile(sig)
   dlancore.methods.update_merkle_root(root, hexToBytes(sig.substring(2))).send({
     from: opAddr,
     gas: 20000000
   }, function (err, txHash) {
     if (err) {
-      console.log(err)
+      logToFile(err)
     }
     res.send("")
   })
