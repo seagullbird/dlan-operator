@@ -91,6 +91,7 @@ dlancore.events.Exiting({}, function (error, event) {
       }, function (err, txHash) {
         if (err) {
           console.log(err)
+          conn.end()
           return
         }
         conn.query(`UPDATE account SET balance = 0 WHERE address = ?`,
@@ -125,6 +126,7 @@ app.get("/balance", (req, res) => {
     dbPool.getConnection().then(conn => {
       conn.query(`SELECT balance FROM account WHERE address = ?`, [addr]).then((rows) => {
         res.send(`${rows[0].balance}`)
+        conn.end()
       }).catch(err => {
         //handle error
         res.send(`${err}`)
