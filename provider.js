@@ -25,6 +25,7 @@ dlancore.methods.provider_register().send({
 })
 
 let dbPool = Mariadb.createPool({
+  database: "radius",
   host: "localhost",
   user: "dlan",
   password: "password"
