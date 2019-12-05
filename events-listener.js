@@ -15,11 +15,11 @@ dlancore.events.Deposited({}, function (error, event) {
 })
 
 dlancore.events.Exiting({}, function (error, event) {
-    console.log("Deposited event received")
+    console.log("Exiting event received")
     console.log(event.returnValues)
 })
 
 dlancore.events.MerkleUpdated({}, function (error, event) {
-    console.log("Deposited event received")
+    console.log("MerkleUpdated event received")
     console.log(event.returnValues)
 })
