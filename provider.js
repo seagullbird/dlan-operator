@@ -1,5 +1,5 @@
 const Web3 = require('web3')
-const MySQL = require('mysql')
+const Mariadb = require('mariadb')
 const Express = require('express')
 const Morgan = require('morgan')
 const request = require('request')
@@ -24,15 +24,10 @@ dlancore.methods.provider_register().send({
   }
 })
 
-let db = MySQL.createConnection({
+let dbPool = Mariadb.createPool({
   host: "localhost",
   user: "root",
   password: ""
-})
-
-db.connect(function (err) {
-  if (err) throw err;
-  console.log("Connected to mysql database!");
 })
 
 var app = Express()
@@ -46,33 +41,36 @@ app.post("/merkleready", (req, res) => {
   var operator_root = req.query.merkleroot
   let sql = 'SELECT * FROM session';
   var vendor_payments = {};
-  db.query(sql, (err, rows, fields) => {
-    if (err) {
-      throw err;
-    }
-    rows.forEach((row) => {
-      if (row.nasname in vendor_payments) {
-        vendor_payments[row.nasname].push({ key: row.address, value: row.payment });
-      } else {
-        vendor_payments[row.nasname] = []
-        vendor_payments[row.nasname].push({ key: row.address, value: row.payment });
+  dbPool.getConnection().then(conn => {
+    conn.query(sql).then((rows) => {
+      rows.forEach((row) => {
+        if (row.nasname in vendor_payments) {
+          vendor_payments[row.nasname].push({ key: row.address, value: row.payment });
+        } else {
+          vendor_payments[row.nasname] = []
+          vendor_payments[row.nasname].push({ key: row.address, value: row.payment });
+        }
+      });
+      var leaves_objects = []
+      for (var key in vendor_payments) {
+        leaves_objects.push(String(vendor_payments[key]));
       }
-    });
-    var leaves_objects = []
-    for (var key in vendor_payments) {
-      leaves_objects.push(String(vendor_payments[key]));
-    }
-    const leaves = leaves_objects.map(x => sha3_256(x));
-    const tree = new MerkleTree(leaves, sha3_256);
-    var merkle_root = '0x' + tree.getRoot().toString('hex')
-    if (merkle_root == operator_root) {
-      res.send('MATCHES!')
+      const leaves = leaves_objects.map(x => sha3_256(x));
+      const tree = new MerkleTree(leaves, sha3_256);
+      var merkle_root = '0x' + tree.getRoot().toString('hex')
+      if (merkle_root == operator_root) {
+        res.send('MATCHES!')
 
-      const hashed_root = web3Obj.utils.soliditySha3(merkle_root);
-      const signed_root = web3Obj.eth.accounts.sign(hashed_root, providerPrivate);
-      console.log(signed_root.signature)
-      request.post('http://localhost:5000/signature?merkleroot=' + merkle_root + '&signature=' + signed_root.signature)
-    }
-    else res.send('DOES NOT MATCH')
+        const hashed_root = web3Obj.utils.soliditySha3(merkle_root);
+        const signed_root = web3Obj.eth.accounts.sign(hashed_root, providerPrivate);
+        console.log(signed_root.signature)
+        request.post('http://localhost:5000/signature?merkleroot=' + merkle_root + '&signature=' + signed_root.signature)
+      }
+      else res.send('DOES NOT MATCH')
+      conn.end()
+    }).catch(err => {
+      //handle error
+      conn.end()
+    })
   })
 })

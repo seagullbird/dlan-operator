@@ -1,5 +1,5 @@
 const Web3 = require('web3')
-const MySQL = require('mysql')
+const Mariadb = require('mariadb')
 const Express = require('express')
 const Morgan = require('morgan')
 const request = require('request')
