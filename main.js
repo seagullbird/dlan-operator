@@ -1,5 +1,5 @@
 const Web3 = require('web3')
-const Sqlite3 = require('sqlite3').verbose();
+const MySQL = require('mysql')
 const Express = require('express')
 const Morgan = require('morgan')
 const request = require('request')
@@ -23,18 +23,23 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-let db = new Sqlite3.Database('./database/users.db', (err) => {
-  if (err) {
-    console.error(err.message);
-  } else console.log('Connected to database.');
+let db = mysql.createConnection({
+  host: "localhost",
+  user: "root",
+  password: ""
+})
+
+db.connect(function (err) {
+  if (err) throw err;
+  console.log("Connected to mysql database!");
 })
 
 // do that every 1 min
 setInterval(function () {
   console.log("Aggregating transactions...")
-  let sql = 'SELECT * FROM users2'
+  let sql = 'SELECT * FROM session'
   var vendor_payments = {}
-  db.all(sql, [], (err, rows) => {
+  db.query(sql, (err, rows, fields) => {
     if (err) {
       throw err;
     }
@@ -61,8 +66,8 @@ setInterval(function () {
 dlancore.events.Deposited({}, function (error, event) {
   console.log("Deposited event received")
   console.log(event.returnValues)
-  db.each(`UPDATE users SET bal = bal + ? WHERE address = ?`,
-    [event.returnValues.numberOfDlanTokens, event.returnValues.owner.toLowerCase()], (err, row) => {
+  db.query(MySQL.format(`UPDATE account SET balance = balance + ? WHERE address = ?`,
+    [event.returnValues.numberOfDlanTokens, event.returnValues.owner.toLowerCase()]), (err, rows, fileds) => {
       if (err) console.log(err)
     })
 })
@@ -71,7 +76,7 @@ dlancore.events.Exiting({}, function (error, event) {
   console.log("Exiting event received")
   console.log(event.returnValues);
   var owner = event.returnValues.owner.toLowerCase()
-  db.get(`SELECT bal, signature FROM users WHERE address = ?`, [owner], (err, row) => {
+  db.query(MySQL.format(`SELECT balance, signature FROM account WHERE address = ?`, [owner]), (err, rows, fields) => {
     if (err) {
       console.log(err)
       return
@@ -84,8 +89,8 @@ dlancore.events.Exiting({}, function (error, event) {
         console.log(err)
         return;
       }
-      db.each(`UPDATE users SET bal = 0 WHERE address = ?`,
-        [owner], (err, row) => {
+      db.query(MySQL.format(`UPDATE account SET balance = 0 WHERE address = ?`,
+        [owner]), (err, rows, fields) => {
           if (err) console.log(err)
         })
     })
@@ -104,7 +109,7 @@ app.get("/balance", (req, res) => {
   var addr = req.query.address
   if (!addr) res.send("need parameter 'address'")
   else {
-    db.get(`SELECT bal FROM users WHERE address = ?`, [addr], (err, row) => {
+    db.query(MySQL.format(`SELECT balance FROM account WHERE address = ?`, [addr]), (err, row, fields) => {
       if (err) {
         console.log(err)
         res.send(`${err}`)
@@ -126,7 +131,7 @@ app.post("/transaction", (req, res) => {
     res.send("Invalid signature!")
     return;
   }
-  db.each(`UPDATE users SET bal = ?, signature = ?`, [bal, sig], (err, row) => {
+  db.query(MySQL.format(`UPDATE account SET balance = ?, signature = ?`, [bal, sig]), (err, row) => {
     if (err) {
       console.log(err)
       res.send(`${err}`)

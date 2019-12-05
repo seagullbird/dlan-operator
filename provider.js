@@ -1,5 +1,5 @@
 const Web3 = require('web3')
-const Sqlite3 = require('sqlite3').verbose();
+const MySQL = require('mysql')
 const Express = require('express')
 const Morgan = require('morgan')
 const request = require('request')
@@ -24,12 +24,16 @@ dlancore.methods.provider_register().send({
   }
 })
 
-let db = new Sqlite3.Database('./database/users.db', (err) => {
-  if (err) {
-    console.error(err.message);
-  } else console.log('Connected to database.');
+let db = mysql.createConnection({
+  host: "localhost",
+  user: "root",
+  password: ""
 })
 
+db.connect(function (err) {
+  if (err) throw err;
+  console.log("Connected to mysql database!");
+})
 
 var app = Express()
 app.use(Morgan('combined'))
@@ -40,9 +44,9 @@ app.listen(port, () => {
 
 app.post("/merkleready", (req, res) => {
   var operator_root = req.query.merkleroot
-  let sql = 'SELECT * FROM users2';
+  let sql = 'SELECT * FROM session';
   var vendor_payments = {};
-  db.all(sql, [], (err, rows) => {
+  db.query(sql, (err, rows, fields) => {
     if (err) {
       throw err;
     }
