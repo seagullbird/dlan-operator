@@ -83,8 +83,9 @@ dlancore.events.Exiting({}, function (error, event) {
   console.log(event.returnValues);
   var owner = event.returnValues.owner.toLowerCase()
   dbPool.getConnection().then(conn => {
-    conn.query(`SELECT balance, signature FROM account WHERE address = ?`, [owner]).then((row) => {
-      dlancore.methods.challenge(owner, row.bal, hexToBytes(row.signature)).send({
+    conn.query(`SELECT balance, signature FROM account WHERE address = ?`, [owner]).then((rows) => {
+      var row = rows[0]
+      dlancore.methods.challenge(owner, row.balance, hexToBytes(row.signature)).send({
         from: opAddr,
         gas: 20000000
       }, function (err, txHash) {
@@ -122,8 +123,8 @@ app.get("/balance", (req, res) => {
   if (!addr) res.send("need parameter 'address'")
   else {
     dbPool.getConnection().then(conn => {
-      conn.query(`SELECT balance FROM account WHERE address = ?`, [addr]).then((row) => {
-        res.send(`${row.bal}`)
+      conn.query(`SELECT balance FROM account WHERE address = ?`, [addr]).then((rows) => {
+        res.send(`${rows[0].balance}`)
       }).catch(err => {
         //handle error
         res.send(`${err}`)
@@ -147,8 +148,8 @@ app.post("/transaction", (req, res) => {
   }
 
   dbPool.getConnection().then(conn => {
-    conn.query(`UPDATE account SET balance = ?, signature = ?`, [bal, sig]).then((row) => {
-      res.send(`${row.bal}`)
+    conn.query(`UPDATE account SET balance = ?, signature = ?`, [bal, sig]).then((rows) => {
+      res.send(`${rows[0].balance}`)
       conn.end()
     }).catch(err => {
       //handle error
