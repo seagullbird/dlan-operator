@@ -137,9 +137,9 @@ app.get("/balance", (req, res) => {
 })
 
 app.post("/transaction", (req, res) => {
-  var addr = req.body.address
-  var bal = req.body.bal
-  var sig = req.body.signature
+  var addr = req.query.address
+  var bal = req.query.bal
+  var sig = req.query.signature
   var msghash = web3Obj.utils.soliditySha3(bal)
   var signer = web3Obj.eth.accounts.recover(msghash, '0x' + sig).toLowerCase()
   // verify signature
