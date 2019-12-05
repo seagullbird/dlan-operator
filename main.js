@@ -23,7 +23,7 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-let db = mysql.createConnection({
+let db = MySQL.createConnection({
   host: "localhost",
   user: "root",
   password: ""

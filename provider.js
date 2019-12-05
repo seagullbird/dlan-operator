@@ -24,7 +24,7 @@ dlancore.methods.provider_register().send({
   }
 })
 
-let db = mysql.createConnection({
+let db = MySQL.createConnection({
   host: "localhost",
   user: "root",
   password: ""
