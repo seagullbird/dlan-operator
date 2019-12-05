@@ -93,6 +93,7 @@ dlancore.events.Exiting({}, function (error, event) {
 
 var app = Express()
 app.use(Morgan('combined'))
+app.use(Express.json())
 const port = 5000;
 app.listen(port, () => {
   console.log("Server running on port " + port);
@@ -113,9 +114,9 @@ app.get("/balance", (req, res) => {
 })
 
 app.post("/transaction", (req, res) => {
-  var addr = req.query.address
-  var bal = req.query.bal
-  var sig = req.query.signature
+  var addr = req.body.address
+  var bal = req.body.bal
+  var sig = req.body.signature
   var msghash = web3Obj.utils.soliditySha3(bal)
   var signer = web3Obj.eth.accounts.recover(msghash, '0x' + sig).toLowerCase()
   // verify signature
