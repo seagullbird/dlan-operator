@@ -10,6 +10,7 @@ const opAddr = "0x010cBc9930C71f60cA18159A9B250F9Ed416129B"
 const providerHttpAddr = "http://localhost:6000"
 const sha3_256 = require('js-sha3').sha3_256;
 const { MerkleTree } = require('merkletreejs')
+const AGGR_INTERVAL = 60000 // 5 min
 
 
 let web3Provider = new Web3.providers.WebsocketProvider(chainWsAddr)
@@ -55,7 +56,7 @@ setInterval(function () {
     // publish new merkle root
     request.post(providerHttpAddr + '/merkleready?merkleroot=' + root)
   })
-}, 5 * 1000)
+}, AGGR_INTERVAL)
 
 dlancore.events.Deposited({}, function (error, event) {
   console.log("Deposited event received")
