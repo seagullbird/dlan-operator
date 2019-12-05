@@ -25,8 +25,8 @@ function hexToBytes(hex) {
 
 let db = MySQL.createConnection({
   host: "localhost",
-  user: "root",
-  password: ""
+  user: "dlan",
+  password: "password"
 })
 
 db.connect(function (err) {

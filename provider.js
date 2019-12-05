@@ -26,8 +26,8 @@ dlancore.methods.provider_register().send({
 
 let dbPool = Mariadb.createPool({
   host: "localhost",
-  user: "root",
-  password: ""
+  user: "dlan",
+  password: "password"
 })
 
 var app = Express()
