@@ -60,14 +60,14 @@ app.post("/merkleready", (req, res) => {
     }
     const leaves = leaves_objects.map(x => sha3_256(x));
     const tree = new MerkleTree(leaves, sha3_256);
-    var merkle_root = tree.getRoot().toString('hex')
+    var merkle_root = '0x' + tree.getRoot().toString('hex')
     if (merkle_root == operator_root) {
       res.send('MATCHES!')
 
-      const hashed_root = web3Obj.utils.sha3(merkle_root);
+      const hashed_root = web3Obj.utils.soliditySha3(merkle_root);
       const signed_root = web3Obj.eth.accounts.sign(hashed_root, providerPrivate);
       console.log(signed_root.signature)
-      request.post('http://localhost:5000/signature?merkleroot=' + hashed_root + '&signature=' + signed_root.signature)
+      request.post('http://localhost:5000/signature?merkleroot=' + merkle_root + '&signature=' + signed_root.signature)
     }
     else res.send('DOES NOT MATCH')
   })
