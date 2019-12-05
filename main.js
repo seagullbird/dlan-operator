@@ -23,15 +23,10 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-let db = MySQL.createConnection({
+let dbPool = Mariadb.createPool({
   host: "localhost",
   user: "dlan",
   password: "password"
-})
-
-db.connect(function (err) {
-  if (err) throw err;
-  console.log("Connected to mysql database!");
 })
 
 // do that every 1 min
@@ -39,60 +34,76 @@ setInterval(function () {
   console.log("Aggregating transactions...")
   let sql = 'SELECT * FROM session'
   var vendor_payments = {}
-  db.query(sql, (err, rows, fields) => {
-    if (err) {
-      throw err;
-    }
-    rows.forEach((row) => {
-      if (row.nasname in vendor_payments) {
-        vendor_payments[row.nasname].push({ key: row.address, value: row.payment });
-      } else {
-        vendor_payments[row.nasname] = []
-        vendor_payments[row.nasname].push({ key: row.address, value: row.payment });
+  dbPool.getConnection().then(conn => {
+    conn.query(sql).then((rows) => {
+      rows.forEach((row) => {
+        if (row.nasname in vendor_payments) {
+          vendor_payments[row.nasname].push({ key: row.address, value: row.payment });
+        } else {
+          vendor_payments[row.nasname] = []
+          vendor_payments[row.nasname].push({ key: row.address, value: row.payment });
+        }
+      });
+      var leaves_objects = []
+      for (var key in vendor_payments) {
+        leaves_objects.push(String(vendor_payments[key]));
       }
-    });
-    var leaves_objects = []
-    for (var key in vendor_payments) {
-      leaves_objects.push(String(vendor_payments[key]));
-    }
-    const leaves = leaves_objects.map(x => sha3_256(x));
-    const tree = new MerkleTree(leaves, sha3_256);
-    const root = '0x' + tree.getRoot().toString('hex')
-    // publish new merkle root
-    request.post(providerHttpAddr + '/merkleready?merkleroot=' + root)
+      const leaves = leaves_objects.map(x => sha3_256(x));
+      const tree = new MerkleTree(leaves, sha3_256);
+      const root = '0x' + tree.getRoot().toString('hex')
+      // publish new merkle root
+      request.post(providerHttpAddr + '/merkleready?merkleroot=' + root)
+      conn.end()
+    }).catch(err => {
+      //handle error
+      console.log(err)
+      conn.end()
+    })
   })
 }, AGGR_INTERVAL)
 
 dlancore.events.Deposited({}, function (error, event) {
   console.log("Deposited event received")
   console.log(event.returnValues)
-  db.query(MySQL.format(`UPDATE account SET balance = balance + ? WHERE address = ?`,
-    [event.returnValues.numberOfDlanTokens, event.returnValues.owner.toLowerCase()]), (err, rows, fileds) => {
-      if (err) console.log(err)
-    })
+  dbPool.getConnection().then(conn => {
+    conn.query(`UPDATE account SET balance = balance + ? WHERE address = ?`,
+      [event.returnValues.numberOfDlanTokens, event.returnValues.owner.toLowerCase()]).then((res) => {
+        conn.end()
+      }).catch(err => {
+        //handle error
+        console.log(err)
+        conn.end()
+      })
+  })
 })
 
 dlancore.events.Exiting({}, function (error, event) {
   console.log("Exiting event received")
   console.log(event.returnValues);
   var owner = event.returnValues.owner.toLowerCase()
-  db.query(MySQL.format(`SELECT balance, signature FROM account WHERE address = ?`, [owner]), (err, rows, fields) => {
-    if (err) {
+  dbPool.getConnection().then(conn => {
+    conn.query(`SELECT balance, signature FROM account WHERE address = ?`, [owner]).then((row) => {
+      dlancore.methods.challenge(owner, row.bal, hexToBytes(row.signature)).send({
+        from: opAddr,
+        gas: 20000000
+      }, function (err, txHash) {
+        if (err) {
+          console.log(err)
+          return
+        }
+        conn.query(`UPDATE account SET balance = 0 WHERE address = ?`,
+          [owner]).then((res) => {
+            conn.end()
+          }).catch(err => {
+            //handle error
+            console.log(err)
+            conn.end()
+          })
+      })
+    }).catch(err => {
+      //handle error
       console.log(err)
-      return
-    }
-    dlancore.methods.challenge(owner, row.bal, hexToBytes(row.signature)).send({
-      from: opAddr,
-      gas: 20000000
-    }, function (err, txHash) {
-      if (err) {
-        console.log(err)
-        return;
-      }
-      db.query(MySQL.format(`UPDATE account SET balance = 0 WHERE address = ?`,
-        [owner]), (err, rows, fields) => {
-          if (err) console.log(err)
-        })
+      conn.end()
     })
   })
 })
@@ -109,12 +120,14 @@ app.get("/balance", (req, res) => {
   var addr = req.query.address
   if (!addr) res.send("need parameter 'address'")
   else {
-    db.query(MySQL.format(`SELECT balance FROM account WHERE address = ?`, [addr]), (err, row, fields) => {
-      if (err) {
-        console.log(err)
+    dbPool.getConnection().then(conn => {
+      conn.query(`SELECT balance FROM account WHERE address = ?`, [addr]).then((row) => {
+        res.send(`${row.bal}`)
+      }).catch(err => {
+        //handle error
         res.send(`${err}`)
-      }
-      else res.send(`${row.bal}`)
+        conn.end()
+      })
     })
   }
 })
@@ -129,16 +142,19 @@ app.post("/transaction", (req, res) => {
   if (signer !== addr) {
     console.log(signer)
     res.send("Invalid signature!")
-    return;
+    return
   }
-  db.query(MySQL.format(`UPDATE account SET balance = ?, signature = ?`, [bal, sig]), (err, row) => {
-    if (err) {
-      console.log(err)
+
+  dbPool.getConnection().then(conn => {
+    conn.query(`UPDATE account SET balance = ?, signature = ?`, [bal, sig]).then((row) => {
+      res.send(`${row.bal}`)
+      conn.end()
+    }).catch(err => {
+      //handle error
       res.send(`${err}`)
-      return
-    }
+      conn.end()
+    })
   })
-  res.send("")
 })
 
 app.post("/signature", (req, res) => {
