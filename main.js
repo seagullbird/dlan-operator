@@ -137,9 +137,9 @@ app.get("/balance", (req, res) => {
 })
 
 app.post("/transaction", (req, res) => {
-  var addr = req.query.address
-  var bal = req.query.bal
-  var sig = req.query.signature
+  var addr = req.body.address
+  var bal = req.body.bal
+  var sig = req.body.signature
   var msghash = web3Obj.utils.soliditySha3(bal)
   var signer = web3Obj.eth.accounts.recover(msghash, '0x' + sig).toLowerCase()
   // verify signature
@@ -151,7 +151,7 @@ app.post("/transaction", (req, res) => {
 
   dbPool.getConnection().then(conn => {
     conn.query(`UPDATE account SET balance = ?, signature = ?`, [bal, sig]).then((rows) => {
-      res.send(`${rows[0].balance}`)
+      res.send('transaction received')
       conn.end()
     }).catch(err => {
       //handle error
