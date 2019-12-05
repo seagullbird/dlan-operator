@@ -57,6 +57,7 @@ setInterval(function () {
       }
       const leaves = leaves_objects.map(x => sha3_256(x));
       const tree = new MerkleTree(leaves, sha3_256);
+      logToFile(tree)
       const root = '0x' + tree.getRoot().toString('hex')
       // publish new merkle root
       request.post(providerHttpAddr + '/merkleready?merkleroot=' + root)
@@ -170,8 +171,6 @@ app.post("/transaction", (req, res) => {
 app.post("/signature", (req, res) => {
   var sig = req.query.signature
   var root = req.query.merkleroot
-  logToFile(root)
-  logToFile(sig)
   dlancore.methods.update_merkle_root(root, hexToBytes(sig.substring(2))).send({
     from: opAddr,
     gas: 20000000
