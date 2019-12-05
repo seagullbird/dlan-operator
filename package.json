@@ -10,6 +10,7 @@
     "keccak": "^2.1.0",
     "merkletreejs": "^0.1.7",
     "morgan": "^1.9.1",
+    "request": "^2.88.0",
     "sqlite3": "^4.1.0",
     "web3": "^1.2.4"
   },

@@ -2,7 +2,7 @@ const Web3 = require('web3')
 const Sqlite3 = require('sqlite3').verbose();
 const Express = require('express')
 const Morgan = require('morgan')
-const http = require('http');
+const request = require('request')
 const tokenInterface = require('../dlan-network/build/contracts/DlanCore.json')
 const chainWsAddr = "ws://localhost:7545"
 const dlanCoreAddr = "0xaE7F1947640FF06F49f72b78fCFfBeBAB764A278"
@@ -53,12 +53,9 @@ setInterval(function () {
     const tree = new MerkleTree(leaves, sha3_256);
     const root = tree.getRoot().toString('hex')
     // publish new merkle root
-    http.get(providerHttpAddr + '/merkleready?merkleroot=' + root, (resp) => {
-    }).on("error", (err) => {
-      console.log("Error: " + err.message);
-    })
+    request.post(providerHttpAddr + '/merkleready?merkleroot=' + root)
   })
-}, 5000)
+}, 5 * 1000)
 
 dlancore.events.Deposited({}, function (error, event) {
   console.log("Deposited event received")
@@ -142,7 +139,7 @@ app.post("/signature", (req, res) => {
   var root = req.query.merkleroot
   console.log(root)
   console.log(sig)
-  dlancore.methods.update_merkle_root(hexToBytes(root), hexToBytes(sig)).send({
+  dlancore.methods.update_merkle_root(root, hexToBytes(sig.substring(2))).send({
     from: opAddr,
     gas: 20000000
   }, function (err, txHash) {
